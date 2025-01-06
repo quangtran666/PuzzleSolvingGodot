@@ -36,7 +36,21 @@ public partial class GridManager : Node
 	{
 		foreach (var tilePosition in _validBuildableTiles)
 		{
-			_highlightTileMapLayer.SetCell(tilePosition, 1, Vector2I.Zero);
+			_highlightTileMapLayer.SetCell(tilePosition, 0, Vector2I.Zero);
+		}
+	}
+
+	public void HighlightExpandedBuildableTiles(Vector2I rootCell, int radius)
+	{
+		ClearHighlightedTiles();
+		HighlightBuildableTiles();
+		
+		var validTiles = GetValidTilesInRadius(rootCell, radius).ToHashSet();
+		var expandedTiles = validTiles.Except(_validBuildableTiles).Except(GetOccupiedTiles());
+		var atlasCoords = new Vector2I(1, 0);
+		foreach (var tilePosition in expandedTiles)
+		{
+			_highlightTileMapLayer.SetCell(tilePosition, 0, atlasCoords);
 		}
 	}
 
@@ -56,19 +70,33 @@ public partial class GridManager : Node
 	private void UpdateValidBuildableTiles(BuildingComponent buildingComponent)
 	{
 		var rootCell = buildingComponent.GetGridCellComponent();
+		var validTiles = GetValidTilesInRadius(rootCell, buildingComponent.BuildableRadius);
+		_validBuildableTiles.UnionWith(validTiles);
+		_validBuildableTiles.ExceptWith(GetOccupiedTiles());
+	}
+
+	private IEnumerable<Vector2I> GetOccupiedTiles()
+	{
+		var buildingComponentsInGroup = GetTree().GetNodesInGroup(nameof(BuildingComponent)).Cast<BuildingComponent>();
+		var occupiedTiles = buildingComponentsInGroup.Select(x => x.GetGridCellComponent());
+		return occupiedTiles;
+	}
+	
+	private List<Vector2I> GetValidTilesInRadius(Vector2I rootCell, int radius)
+	{
+		var result = new List<Vector2I>();
 		
-		for (var x = rootCell.X - buildingComponent.BuildableRadius; x <= rootCell.X + buildingComponent.BuildableRadius; x++)
+		for (var x = rootCell.X - radius; x <= rootCell.X + radius; x++)
 		{
-			for (var y = rootCell.Y - buildingComponent.BuildableRadius; y <= rootCell.Y + buildingComponent.BuildableRadius; y++)
+			for (var y = rootCell.Y - radius; y <= rootCell.Y + radius; y++)
 			{
 				var titlePostion = new Vector2I(x, y);
 				if (!IsTilePositionValid(titlePostion)) continue;
-				_validBuildableTiles.Add(titlePostion);
+				result.Add(titlePostion);
 			}
 		}
 
-		// Prevent to add the same tile twice in the placed building
-		_validBuildableTiles.Remove(rootCell);
+		return result;
 	}
 	
 	private void OnBuildingPlaced(BuildingComponent buildingcomponent)

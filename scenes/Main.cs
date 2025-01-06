@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using Game.Manager;
 using Godot;
 
@@ -41,7 +40,7 @@ public partial class Main : Node
         if (_cursor.IsVisible() && (!_hoveredGridCell.HasValue || _hoveredGridCell.Value != gridPosition))
         {
             _hoveredGridCell = gridPosition;
-            _gridManager.HighlightBuildableTiles();
+            _gridManager.HighlightExpandedBuildableTiles(_hoveredGridCell.Value, 3);
         }
     }
     
@@ -60,5 +59,6 @@ public partial class Main : Node
     private void OnButtonPressed()
     {
         _cursor.Visible = true;
+        _gridManager.HighlightBuildableTiles();
     } 
 }
