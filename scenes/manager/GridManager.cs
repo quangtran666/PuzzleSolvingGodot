@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Game.Autoload;
 using Game.Component;
 using Godot;
 
@@ -9,35 +10,33 @@ public partial class GridManager : Node
 {
 	public const int GRID_SIZE = 64;
 	
-	private readonly HashSet<Vector2I> _occupiedCells = new();
+	private readonly HashSet<Vector2I> _validBuildableTiles = new();
 	
 	[Export] private TileMapLayer _highlightTileMapLayer;
 	[Export] private TileMapLayer _baseTerrainTileMapLayer; 
 	
 	public override void _Ready()
 	{
+		GameEvents.Instance.BuildingPlaced += OnBuildingPlaced;
 	}
 
+	// Cái này để check xem cái tile này có build được hay không: Sand, Ground
 	public bool IsTilePositionValid(Vector2I tilePostion)
 	{
 		var customData = _baseTerrainTileMapLayer.GetCellTileData(tilePostion);
 
 		if (customData == null) return false;
-		if (!(bool)customData.GetCustomData("buildable")) return false;
-		
-		return !_occupiedCells.Contains(tilePostion);
+		return (bool)customData.GetCustomData("buildable");
 	}
 
-	public void MarkTileAsOccupied(Vector2I position) => _occupiedCells.Add(position);
+	// Cái này thì kiểm tra xem trong cái tilePosition nó đang ở trong state có thể build được
+	public bool IsTilePositionBuildable(Vector2I tilePosition) => _validBuildableTiles.Contains(tilePosition);
 
 	public void HighlightBuildableTiles()
 	{
-		ClearHighlightedTiles();
-		var buildingComponents = GetTree().GetNodesInGroup(nameof(BuildingComponent)).Cast<BuildingComponent>();
-
-		foreach (var buildingComponent in buildingComponents)
+		foreach (var tilePosition in _validBuildableTiles)
 		{
-			HighlightValidTilesRadius(buildingComponent.GetGridCellComponent(), buildingComponent.BuildableRadius);
+			_highlightTileMapLayer.SetCell(tilePosition, 1, Vector2I.Zero);
 		}
 	}
 
@@ -53,18 +52,27 @@ public partial class GridManager : Node
 		gridPosition = gridPosition.Floor();
 		return new Vector2I((int)gridPosition.X, (int)gridPosition.Y);
 	}
-	
-	private void HighlightValidTilesRadius(Vector2I rootCell, int radius)
+
+	private void UpdateValidBuildableTiles(BuildingComponent buildingComponent)
 	{
-		for (var x = rootCell.X - radius; x <= rootCell.X + radius; x++)
+		var rootCell = buildingComponent.GetGridCellComponent();
+		
+		for (var x = rootCell.X - buildingComponent.BuildableRadius; x <= rootCell.X + buildingComponent.BuildableRadius; x++)
 		{
-			for (var y = rootCell.Y - radius; y <= rootCell.Y + radius; y++)
+			for (var y = rootCell.Y - buildingComponent.BuildableRadius; y <= rootCell.Y + buildingComponent.BuildableRadius; y++)
 			{
 				var titlePostion = new Vector2I(x, y);
 				if (!IsTilePositionValid(titlePostion)) continue;
-				
-				_highlightTileMapLayer.SetCell(titlePostion, 1, Vector2I.Zero);
+				_validBuildableTiles.Add(titlePostion);
 			}
 		}
+
+		// Prevent to add the same tile twice in the placed building
+		_validBuildableTiles.Remove(rootCell);
+	}
+	
+	private void OnBuildingPlaced(BuildingComponent buildingcomponent)
+	{
+		UpdateValidBuildableTiles(buildingcomponent);
 	}
 }

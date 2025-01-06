@@ -6,7 +6,6 @@ namespace Game;
 
 public partial class Main : Node
 {
-
     private GridManager _gridManager;
     private Sprite2D _cursor;
     private PackedScene _buildingScene;
@@ -27,7 +26,7 @@ public partial class Main : Node
 
     public override void _UnhandledInput(InputEvent evt)
     {
-        if (_hoveredGridCell.HasValue && evt.IsActionPressed("left_click") && _gridManager.IsTilePositionValid(_hoveredGridCell.Value))
+        if (_hoveredGridCell.HasValue && evt.IsActionPressed("left_click") && _gridManager.IsTilePositionBuildable(_hoveredGridCell.Value))
         {
             PlaceBuildingAtHoverCellPosition();
             _cursor.Visible = false;
@@ -52,9 +51,7 @@ public partial class Main : Node
         
         var building = _buildingScene.Instantiate<Node2D>();
         AddChild(building);
-        
         building.GlobalPosition = _hoveredGridCell.Value * 64;
-        _gridManager.MarkTileAsOccupied(_hoveredGridCell.Value);
         
         _hoveredGridCell = null;
         _gridManager.ClearHighlightedTiles();

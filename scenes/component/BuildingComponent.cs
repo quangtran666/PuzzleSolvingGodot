@@ -1,3 +1,4 @@
+using Game.Autoload;
 using Godot;
 
 namespace Game.Component;
@@ -9,6 +10,8 @@ public partial class BuildingComponent : Node2D
     public override void _Ready()
     {
         AddToGroup(nameof(BuildingComponent));
+        // Cái này đơn giản sẽ dừng lại lời gọi hàm cho tới cái frame tiếp theo
+        Callable.From(() => GameEvents.EmitBuildingPlaced(this)).CallDeferred();
     }
 
     public Vector2I GetGridCellComponent()
